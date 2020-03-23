@@ -11,29 +11,24 @@ import {
   base64encoded,
 	Animated,
 	Dimensions,
-	PixelRatio
+	PixelRatio,
+  KeyboardAvoidingView
 } from 'react-native'
 import GestureRecognizer from 'react-native-swipe-gestures'
-import { SocialIcon } from 'react-native-elements'
 import * as Expo from 'expo'
 import * as Font from 'expo-font'
-import {
-  Stitch,
-  RemoteMongoClient,
-  AnonymousCredential,
-  CustomCredential
-} from 'mongodb-stitch-react-native-sdk'
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
 
 import config from '../../config'
 import SmartCard from './SmartCard'
-import JWT from 'expo-jwt';
+import LogoTitle from './LogoTitle'
 
 class LogInScreen extends Component {
   constructor() {
     super(...arguments)
 
     this.state = {
-      client: undefined,
       fontLoaded: false,
       helpScreen: 0,
       andoverEmail: '',
@@ -44,78 +39,28 @@ class LogInScreen extends Component {
 			inAnimation: false
     }
 
-    this._loadClient = this._loadClient.bind(this)
-    this.addUser = this.addUser.bind(this)
-    this.signUp = this.signUp.bind(this)
-    console.log(JWT.encode({ aud: config.jwt.aud }, config.jwt.key, { algorithm: 'HS256' }))
+    this.signUp = this.signUp.bind(this);
+    this.login = this.login.bind(this);
   }
 
   async componentDidMount() {
+    this.props.navigation.setParams({
+      center: <LogoTitle />,
+      left: null,
+      right: null
+    })
+
     await Font.loadAsync({
       'roboto-light': require('../../assets/fonts/roboto/Roboto-Light.ttf'),
       'roboto-medium': require('../../assets/fonts/roboto/Roboto-Medium.ttf')
     })
 
     this.setState({ fontLoaded: true })
-    console.log('Mounted')
-  }
-
-	/* Only for Development */
-  async anonymousLogin() {
-    this.state.client.auth.loginWithCredential(new AnonymousCredential()).then(user => {
-      console.log(`Successfully logged in as user ${user.id}`)
-      this.setState({ currentUserId: user.id })
-    }).catch(err => {
-      console.log(`Failed to log in anonymously: ${err}`)
-      this.setState({ currentUserId: undefined })
-    })
-  }
-
-  async addUser() {
-    this.state.collection.find({ owner_id: this.state.currentUserId }, { limit: 1 }).first().then(foundDoc => {
-      if (foundDoc) {
-        this.state.collection.updateOne(
-          { owner_id: this.state.currentUserId },
-          {
-            owner_id: this.state.currentUserId,
-            name: this.state.tempName
-          }).then(result => {
-          console.log(result)
-        })
-      } else {
-        this.state.collection.insertOne(
-          {
-            owner_id: this.state.currentUserId,
-            name: this.state.tempName
-          }).then(result => {
-          console.log(result)
-        })
-      }
-    })
-  }
-
-  _loadClient() {
-    const APP_ID = 'smartandover-wygyl'
-
-    // TODO: Initialize the app client
-    const app = Stitch.hasAppClient(APP_ID)
-      ? Stitch.getAppClient(APP_ID)
-      : Stitch.initializeAppClient(APP_ID)
-
-    app.then(client => {
-      this.setState({ client })
-      const dbClient = client.getServiceClient(RemoteMongoClient.factory, 'mongodb-atlas')
-      this.setState({ atlasClient: dbClient })
-      this.setState({ collection: dbClient.db('StitchDB').collection('users_information') })
-    })
-  }
-
-  componentWillMount() {
-    this._loadClient()
   }
 
   signUp() {
-		if (this.state.andoverEmail === "" || this.state.password.length === 0 || this.state.confirmPassword.length === 0) {
+    // quick validation
+		if (!this.state.andoverEmail || !this.state.password.length || !this.state.confirmPassword.length) {
 			this.setState({
 				errorMsg: 'Some boxes aren\'t filled'
 			})
@@ -142,10 +87,39 @@ class LogInScreen extends Component {
     this.setState({
       errorMsg: ''
     })
-		
-		// do stuff
+
+    axios.post(config.api + 'users/register', {
+      email: this.state.andoverEmail.toLowerCase(),
+      username: this.state.andoverEmail.toLowerCase().substring(0, this.state.andoverEmail.indexOf('@')),
+      password: this.state.password
+    })
+      .then((res) => {
+        this.props.authorize(res.headers['auth-token'])
+      })
+      .catch((res) => {
+        this.setState({
+          errorMsg: res.response.data || 'There was a network error. Try again later :('
+        })
+      });
   }
-	
+
+  login() {
+    axios.post(config.api + 'users/login', {
+      email: this.state.andoverEmail.toLowerCase(),
+      password: this.state.password
+    })
+      .then((res) => {
+        const e = SecureStore.setItemAsync('SmartAndoverEmail', this.state.andoverEmail.toLowerCase()).then(() => {})
+        const p = SecureStore.setItemAsync('SmartAndoverPassword', this.state.password).then(() => {})
+        this.props.authorize(res.headers['auth-token'])
+      })
+      .catch((res) => {
+        this.setState({
+          errorMsg: res.response.data || 'There was a network error. Try again later :('
+        })
+      });
+  }
+
 	getHowToTitle() {
 		if (this.state.helpScreen < 3) {
 			return <Text style={styles.howToTitle}>Here's how it works!</Text>
@@ -154,12 +128,13 @@ class LogInScreen extends Component {
 		}
 		return <Text style={styles.howToTitle}>Log In</Text>
 	}
-	
+
 	swipeLeft = () => {
 		if (!this.state.inAnimation && this.state.helpScreen < 4) {
 			this.setState({
 				inAnimation: true,
-				helpScreen: this.state.helpScreen += 1
+				helpScreen: this.state.helpScreen += 1,
+        errorMsg: ''
 			})
 			Animated.timing(this.state.slideLeft, {
 				toValue: -this.state.helpScreen*Dimensions.get('window').width,
@@ -171,12 +146,13 @@ class LogInScreen extends Component {
 			})
 		}
 	}
-	
+
 	swipeRight = () => {
 		if (!this.state.inAnimation && this.state.helpScreen === 4) {
 			this.setState({
 				inAnimation: true,
-				helpScreen: this.state.helpScreen -= 1
+				helpScreen: this.state.helpScreen -= 1,
+        errorMsg: ''
 			})
 			Animated.timing(this.state.slideLeft, {
 				toValue: -this.state.helpScreen*Dimensions.get('window').width,
@@ -200,8 +176,9 @@ class LogInScreen extends Component {
     if (!this.state.fontLoaded) return null
 
     return (
-      <View
+      <KeyboardAvoidingView
         style={styles.container}
+        behavior="padding"
       >
         <SmartCard style={styles.card}>
           <View>
@@ -211,10 +188,10 @@ class LogInScreen extends Component {
               <Text> App</Text>
             </Text>
             <Text />
-            
+
 						{this.getHowToTitle()}
             <View style={styles.horizBar} />
-	
+
             <GestureRecognizer
 							onSwipeRight={this.swipeRight}
               onSwipeLeft={this.swipeLeft}
@@ -230,7 +207,7 @@ class LogInScreen extends Component {
 								<View style={styles.infoPanelFlexBox}>
 									<View style={styles.infoPanel}>
 										<Image
-							  			source={require('../../assets/ui/recycling.png')}
+							  			source={require('../../assets/ui/intro/recycling.png')}
 							  			style={styles.howToImages}
 										/>
 										<Text />
@@ -241,7 +218,7 @@ class LogInScreen extends Component {
 									</View>
 									<View style={styles.infoPanel}>
 						        <Image
-						          source={require('../../assets/ui/takePhoto.png')}
+						          source={require('../../assets/ui/intro/takePhoto.png')}
 						          style={styles.howToImages}
 						        />
 						        <Text />
@@ -252,7 +229,7 @@ class LogInScreen extends Component {
 						      </View>
 									<View style={styles.infoPanel}>
 						        <Image
-						          source={require('../../assets/ui/money.jpg')}
+						          source={require('../../assets/ui/intro/money.jpg')}
 						          style={styles.howToImages}
 						        />
 						        <Text />
@@ -296,6 +273,7 @@ class LogInScreen extends Component {
 						        <Text />
 						      </View>
 									<View style={styles.infoPanel}>
+                    {this.state.errorMsg ? <Text style={[styles.howToDescription, {marginBottom: 20, color: 'red'}]}>{this.state.errorMsg}</Text> : null}
 						        <Text style={styles.providersTitle}>Andover Email</Text>
 						        <TextInput
 						          style={styles.textBoxes}
@@ -315,43 +293,26 @@ class LogInScreen extends Component {
 						          secureTextEntry
 						        />
 						        <Text />
-						        <Button style={styles.howToDescription} title={'Continue'} onPress={this.props.signIn}/>
+						        <Button
+                      style={styles.howToDescription}
+                      title={'Continue'}
+                      onPress={this.login}
+                    />
 						        <Text />
 						      </View>
 								</View>
 							</Animated.View>
             </GestureRecognizer>
-            <Text style={styles.swipeHelp}>{helpScreen < 3 && 'Swipe Left to Continue' || helpScreen === 3 && 'Swipe Left to Log In' || helpScreen === 4 && 'Swipe Right to Sign Up'}</Text>
-            {/*<Text style={styles.providersTitle}>
-              Login with the following providers:
-            </Text>
-            <View
-              style={styles.providersContainer}
-            >
-              <View style={styles.providerContainer}>
-                <SocialIcon
-                  type="google-plus-official"
-                  onPress={this.googleIconPressed}
-                />
-                <Text style={styles.providersLabel}>Google</Text>
-              </View>
-              <View style={styles.providerContainer}>
-                <SocialIcon
-                  type="facebook"
-                  onPress={() => {
-                    console.log('facebook')
-                  }}
-                />
-                <Text style={styles.providersLabel}>Facebook</Text>
-              </View>
-            </View>
-            <Button
-              title={'Login Anonymously (Beta)'}
-              onPress={this.props.signIn}
-            />*/}
+            <Text
+              style={styles.swipeHelp}
+            >{
+              helpScreen < 3 && 'Swipe Left to Continue' ||
+              helpScreen === 3 && 'Swipe Left to Log In' ||
+              helpScreen === 4 && 'Swipe Right to Sign Up'
+            }</Text>
           </View>
         </SmartCard>
-      </View>
+      </KeyboardAvoidingView>
     )
   }
 }
@@ -381,7 +342,6 @@ const
       textAlign: 'center'
     },
     providersHelp: {
-      fontStyle: 'italics',
       textAlign: 'center',
       fontSize: 10
     },

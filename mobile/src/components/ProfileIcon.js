@@ -1,11 +1,11 @@
 import React, { Component } from 'react'
-import { Image, StyleSheet } from 'react-native'
+import { Image, StyleSheet, TouchableOpacity } from 'react-native'
 
 const styles = StyleSheet.create({
   profileImage: {
     width: 30,
     height: 30,
-    marginHorizontal: 15,
+    marginRight: 15,
     borderRadius: 15
   },
 })
@@ -13,10 +13,14 @@ const styles = StyleSheet.create({
 class ProfileIcon extends Component {
   render() {
     return (
-      <Image
-        source={require('../../assets/def_profile.png')}
-        style={styles.profileImage}
-      />
+      <TouchableOpacity
+        onPress={() => this.props.navigation.navigate('ProfileMenu')}
+      >
+        <Image
+          source={require('../../assets/ui/profile.png')}
+          style={styles.profileImage}
+        />
+      </TouchableOpacity>
     )
   }
 }

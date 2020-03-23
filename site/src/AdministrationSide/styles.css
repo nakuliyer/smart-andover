@@ -1,0 +1,206 @@
+/* overall */
+
+.App {
+  text-align: center;
+}
+
+.contents {
+  background-color: white;
+  min-height: 100vh;
+  display: flex;
+  font-family: "Roboto-Regular", sans-serif;
+  flex-direction: column;
+  align-items: center;
+  color: black;
+}
+
+/* header logo stuff */
+
+.header {
+  width: 100%;
+  height: 50px;
+  margin: 0;
+  padding: 0;
+  top: 0;
+  position: fixed;
+  background-color: #417580;
+  display: flex;
+  flex-direction: row;
+}
+
+.header-title {
+  margin-left: 20px;
+  margin-top: 6px;
+  font-size: 30px;
+  color: #E7C385;
+  float: left;
+  position: fixed;
+  font-family: "Roboto-Light", sans-serif;
+}
+
+.logo-image {
+  height: 40px;
+  margin-top: 6px;
+  margin-right: 40px;
+  right: 0;
+  position: fixed;
+}
+
+/* contents */
+
+.root {
+  margin-top: 50px;
+  width: 100%;
+  text-align: left;
+  margin-left: 40px;
+}
+
+.login-label {
+  font-weight: normal;
+  font-size: 30px;
+  color: #696969;
+  font-family: "Roboto-Light", sans-serif;
+  margin-top: 50px;
+  margin-bottom: 0;
+}
+
+.admin-pass {
+  margin-right: 5px;
+}
+
+.error-label {
+  color: red;
+}
+
+/* paginated list stuff */
+
+.paginated-container {
+  width: 100%;
+}
+
+.pagination-bar {
+  width: 100%;
+  text-align: center;
+  font-family: 'Roboto Light';
+  font-size: 30px;
+  line-height: 50px;
+}
+
+.pagination-bar div {
+  display: inline-block;
+  user-select: none;
+}
+
+.image-container {
+  display: inline-block;
+}
+
+.image-gallery {
+  width: 100%;
+  height: 300px;
+}
+
+.image-desc {
+  margin: 10px 10px 5px 10px;
+  width: 108px;
+  text-align: center;
+}
+
+.paginated-image {
+  width: 108px;
+  margin: 15px 15px 0 15px;
+}
+
+.verify-box {
+  margin: 15px auto;
+}
+
+.verify-box button {
+  background-color: transparent;
+  border: 2px solid black;
+  font-size: 14pt;
+  padding: 5px 16px;
+  color: black;
+  border-radius: 4px;
+  margin: 0 20px 0 0;
+  font-family: 'Roboto Light';
+  user-select: none;
+}
+
+.image-checkbox {
+  align-self: center;
+  padding: 0;
+}
+
+.page-num-label {
+  width: 100%;
+  text-align: center;
+  font-family: "Roboto Medium";
+  user-select: none;
+}
+
+/* idk what's going on */
+
+.verify-case {
+  border: 10px solid #0cbfe9;
+  border-radius: 20px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  font-family: monospace;
+  font-size: 20px;
+  display: flex;
+  flex-direction: row;
+}
+
+.verify {
+  padding-left: 50px;
+  padding-right: 50px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.verify:hover {
+  background-color: gray;
+}
+
+
+.image {
+  transform: rotate(90deg) translate(39px, 24px);
+  height: 100px;
+}
+
+.image-text {
+  height: 100px;
+  font-size: 15px;
+}
+
+.text {
+  margin-top: 80px;
+  font-family: "Roboto", sans-serif;
+  color: #000000;
+  font-size: 15px;
+}
+
+.image-wrapper {
+  height: 260px;
+  width: 130px;
+  padding: 0;
+  margin: 0;
+  align-items: center;
+  text-overflow: ellipsis;
+  /* -webkit-transition: border 0.5s; */
+  /* transition: border 0.5s; */
+}
+
+
+.photo-case {
+  width: 90%;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-auto-rows: 280px;
+  justify-items: center;
+  border: 10px solid #0cbfe9;
+  border-radius: 20px;
+  padding-top: 30px;
+}

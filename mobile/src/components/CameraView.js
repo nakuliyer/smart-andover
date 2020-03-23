@@ -9,12 +9,24 @@ import {
 } from 'react-native'
 import * as Expo from 'expo'
 import { Camera } from 'expo-camera'
+import * as ImageManipulator from 'expo-image-manipulator';
+import axios from 'axios';
+// import RNFetchBlob from 'react-native-fetch-blob'
+
+import config from '../../config'
 
 class CameraView extends Component {
+  constructor(props) {
+    super(props);
+
+    this.snapPhoto = this.snapPhoto.bind(this);
+  }
+
   state = {
     hasCameraPermission: null,
     type: Camera.Constants.Type.back,
-    client: null
+    client: null,
+    snapped: false
   }
 
   static navigationOptions = {
@@ -28,29 +40,39 @@ class CameraView extends Component {
     const { status } = await Permissions.askAsync(Permissions.CAMERA)
     this.setState({
       hasCameraPermission: status === 'granted',
-      client: navigation.getParam('client'),
       text: navigation.getParam('text'),
-      ecoType: navigation.getParam('ecoType'),
-      ecoMeta: navigation.getParam('ecoMeta')
+      meta: navigation.getParam('meta')
     })
   }
 
   async snapPhoto() {
-    if (this.camera) {
-      const options = {
-        quality: 1, base64: true, fixOrientation: false,
-        exif: true
-      }
-      await this.camera.takePictureAsync(options).then(photo => {
-        photo.exif.Orientation = 1
-        this.props.navigation.navigate('Home', {
-          submitData: {
-            photo: photo,
-            text: this.state.text !== '' ? this.state.text : null,
-            ts: Math.floor(Date.now() / 1000),
-            meta: this.state.ecoMeta
-          }
-        })
+    if (this.camera && !this.state.snapped) {
+      this.setState({
+        snapped: true
+      })
+      const photo = await this.camera.takePictureAsync({ fixOrientation: false })
+      const resizedPhoto = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [{ resize: { width: 108, height: 192 } }],
+        { compress: 0, format: "png", base64: true }
+      )
+
+      await axios.post(config.api + 'activities/add', {
+        photo: resizedPhoto.base64,
+        textInput: this.state.text !== '' ? this.state.text : null,
+        metaId: this.state.meta.id,
+        metaPts: this.state.meta.pts,
+        metaCO2: this.state.meta.co2,
+        metaLimitTimes: this.state.meta.limit.times,
+        metaLimitRate: this.state.meta.limit.rate,
+        metaName: this.state.meta.name,
+        metaVerifyImage: this.state.meta.verifyImg,
+        metaVerifyText: this.state.meta.verifyText,
+        metaCategory: this.props.navigation.getParam('typeId')
+      })
+
+      this.props.navigation.navigate('Home', {
+        submitData: true
       })
     }
   }
@@ -80,7 +102,7 @@ class CameraView extends Component {
             >
               <TouchableOpacity onPress={() => goBack(null)}>
                 <Image
-                  source={require('../../assets/eco-icons/back.png')}
+                  source={require('../../assets/ui/camera/back.png')}
                   style={styles.backButtonImg}
                 />
               </TouchableOpacity>

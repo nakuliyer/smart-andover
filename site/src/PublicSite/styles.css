@@ -1,0 +1,211 @@
+/* Nav Bar */
+
+.navbar {
+  height: 150px;
+  width: 100%;
+  position: fixed;
+  top: 0;
+  z-index: 9999;
+  background-color: white;
+  overflow: hidden;
+  font-family: monospace;
+  font-size: 20px;
+}
+
+.navbar li {
+  display: inline-block;
+}
+
+.navbar li a {
+  color: #000;
+  text-decoration: none;
+}
+
+.navbar-about {
+  position: absolute;
+  left: 7%;
+  top: 60px;
+}
+
+.navbar-join {
+  position: absolute;
+  left: 20%;
+  top: 60px;
+}
+
+.navbar-img {
+  position: absolute;
+  width: 400px;
+  left: calc(50% - 200px);
+  top: 30px;
+}
+
+.navbar-contact-us {
+  position: absolute;
+  left: 70%;
+  top: 60px;
+}
+
+.navbar-leadership {
+  position: absolute;
+  left: 85%;
+  top: 60px;
+}
+
+.fe-root {
+  margin-top: 150px;
+}
+
+/* Home */
+
+.parallax {
+  height: 100%;
+  width: 100%;
+  position: relative;
+  scroll-behavior: smooth;
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  z-index: -1;
+}
+
+.img1 {
+  /* background-image: url("http://www.beyerblinderbelle.com/media/files/2534_phillipsacademy_projpic05.jpg?w=1200"); */
+  filter: brightness(0.7);
+  height: calc(100vh - 150px);
+  object-fit: cover;
+}
+
+.img2 {
+  /* background-image: url("https://www.andover.edu/images/News/_hero/owhlnest-render.jpg"); */
+  filter: brightness(0.7);
+  height: calc(100vh - 150px);
+}
+
+.motto-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-style: italic;
+  font-family: monospace;
+  font-weight: bold;
+  font-size: 5vw;
+  color: #ffffff;
+
+  position: absolute;
+  width: 100%;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.interactive-button {
+  background-color: transparent;
+  border: 2px solid white;
+  font-size: 14pt;
+  padding: 16px 32px;
+  color: white;
+  border-radius: 4px;
+  position: absolute;
+  margin: 0;
+}
+
+.interactive-button:hover {
+  background-color: white;
+  color: black;
+}
+
+.top-motto-header {
+  height: calc(100vh - 150px);
+  top: 150px;
+}
+
+.join-club-motto-header {
+  height: 100px;
+  top: calc(215vh - 150px);
+}
+
+.join-club-button {
+  top: calc(230vh - 150px);
+  left: calc(50% - 83px);
+}
+
+.get-in-touch-motto-header {
+  height: 100px;
+  top: calc(245vh - 150px);
+}
+
+.get-in-touch-button {
+  top: calc(260vh - 150px);
+  left: calc(50% - 78.5px);
+}
+
+.mission {
+  max-width: 1000px;
+  height: calc(100vh - 150px);
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.mission h1 {
+  font-size: 30pt;
+  font-family: monospace;
+}
+
+.mission-statement {
+  font-size: 30pt;
+  font-family: monospace;
+  text-align: center;
+}
+
+.mission p {
+  font-size: 20pt;
+  color: #aaa;
+  font-family: "Roboto Light", sans-serif;
+}
+
+.mini-mission {
+  max-width: 1000px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-mission h1 {
+  font-size: 30pt;
+  font-family: monospace;
+}
+
+.mini-mission p {
+  font-size: 20pt;
+  color: #aaa;
+  font-family: "Roboto Light", sans-serif;
+}
+
+div.page-split {
+  display: flex;
+}
+
+div.page-split > div {
+  flex: 1;
+}
+
+.mission-imgs {
+  height: 400px;
+}
+
+.mission-imgs p {
+  width: 100%;
+  text-align: center;
+}
+
+.project-imgs {
+  width: calc(33vw - 100px);
+  margin: 0 30px;
+}

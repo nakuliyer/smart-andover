@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React, { Component, Fragment } from 'react'
 import {
   StatusBar,
   StyleSheet,
@@ -8,489 +8,252 @@ import {
   Button
 } from 'react-native'
 import SmartCard from './SmartCard'
+import LogoTitle from './LogoTitle'
+import ProfileIcon from './ProfileIcon'
+import HelpIcon from './HelpIcon'
+import SettingsIcon from './SettingsIcon'
 import EcoIcon from './EcoIcon'
 import * as Font from 'expo-font'
 import truncateNum from '../utilities/truncateNum'
-import {
-  AwsRequest,
-  AwsServiceClient
-} from 'mongodb-stitch-react-native-services-aws'
+import toUnicode from '../utilities/unicode'
 import { RippleLoader } from 'react-native-indicator'
+import LogInScreen from './LogInScreen'
+import axios from 'axios';
+// import RNFetchBlob from 'react-native-fetch-blob'
+
 import config from '../../config'
 
-const getInspirationalText = (dailyGoalPc, pointsNow, dailyGoal, name) => {
-  if (dailyGoalPc === 0) {
-    return 'Welcome to the Smart Andover App, ' + name + '! Your goal today is ' + String(dailyGoal) + ' points. Click one of the options below to find out more!'
-  } else if (dailyGoalPc <= 0.4) {
-    return 'Great Start! You still need ' + String(dailyGoal - pointsNow) + ' points.'
-  } else if (dailyGoalPc < 1) {
-    return 'You\'re almost there! Keep getting points! You still need ' + String(dailyGoal - pointsNow) + ' points.'
-  } else if (dailyGoalPc === 1) {
-    return 'Way to go! You\'ve met your goal for today!'
-  }
-  return 'Way to go! You have ' + String(pointsNow - dailyGoal) + ' points more than your goal today.'
+const images = {
+  eat: require(`../../assets/eco-icons/eat.png`),
+  drink: require(`../../assets/eco-icons/drink.png`),
+  clean: require(`../../assets/eco-icons/clean.png`),
+  reduce: require(`../../assets/eco-icons/reduce.png`),
+  reuse: require(`../../assets/eco-icons/reuse.png`),
+  recycle: require(`../../assets/eco-icons/recycle.png`),
+  innovate: require(`../../assets/eco-icons/innovate.png`),
+  energy: require(`../../assets/eco-icons/energy.png`),
+  engage: require(`../../assets/eco-icons/engage.png`)
 }
 
+const categories = [
+  ['eat', 'drink', 'clean'],
+  ['reduce', 'reuse', 'recycle'],
+  ['innovate', 'energy', 'engage']
+]
+
 class LoggedInScreen extends Component {
-  state = {
-    data: [],
-    id: 0,
-    message: null,
-    intervalIsSet: false,
-    idToDelete: null,
-    idToUpdate: null,
-    objectToUpdate: null,
-    lastUploadedTime: 0,
-    submitData: []
+  constructor(props) {
+    super(props)
+    axios.defaults.headers.common = { 'auth-token' : this.props.jwt }
+
+    this.state = {
+      funFact: "",
+      ecoIcons: {},
+      name: "User",
+      fontLoaded: false,
+      totalPts: null,
+      totalCO2: null,
+      unviewed: [],
+      netErr: ''
+    }
+
+    this.getFunFact = this.getFunFact.bind(this);
+    this.getName = this.getName.bind(this);
+    this.getPts = this.getPts.bind(this);
+    this.getUnviewed = this.getUnviewed.bind(this);
+    this.getEcoicons = this.getEcoicons.bind(this);
+    this.view = this.view.bind(this);
+
+    this.getFunFact();
+    this.getName();
+    this.getPts();
+    this.getEcoicons();
+    this.getUnviewed();
+  }
+
+  getEcoicons() {
+    Promise.all(categories.flat().map(this.getEcocategory))
+      .then((categoriesList) => {
+        const initialValue = {}
+        const ecoIcons = categoriesList.reduce((obj, item) => {
+          return {
+            ...obj,
+            [item['id']]: item,
+          };
+        }, initialValue);
+        this.setState({
+          ecoIcons
+        })
+      })
   }
 
   async componentDidMount() {
+    this.props.navigation.setParams({
+      left: <LogoTitle />,
+      right: <Fragment><SettingsIcon navigation={this.props.navigation}/><HelpIcon navigation={this.props.navigation}/><ProfileIcon navigation={this.props.navigation} /></Fragment>,
+      center: null
+    })
+
     await Font.loadAsync({
       'roboto-light': require('../../assets/fonts/roboto/Roboto-Light.ttf'),
-      'roboto-medium': require('../../assets/fonts/roboto/Roboto-Medium.ttf')
+      'roboto-medium': require('../../assets/fonts/roboto/Roboto-Medium.ttf'),
+      'roboto-black': require('../../assets/fonts/roboto/Roboto-Black.ttf')
     })
 
-    const {
-      userData: {
-        verified
-      }
-    } = this.props
-
-    this.setState({
-      fontLoaded: true,
-      verified
-    })
+    this.setState({ fontLoaded: true })
   }
 
-  componentWillUnmount() {
-    if (this.state.intervalIsSet) {
-      clearInterval(this.state.intervalIsSet)
-      this.setState({ intervalIsSet: null })
-    }
+  async getPts() {
+    await axios.get(config.api + 'activities/pts')
+      .then((res) => this.setState({
+        totalPts: res.data.totalPts,
+        totalCO2: res.data.totalCO2
+      }))
+      .catch((err) => console.log(err.response))
   }
 
-  addRecentItem() {
-    const item = this.state.verified[ 0 ]
-    const verified = this.state.verified.slice(1)
-    this.props.update({
-      $inc: {
-        'ptsTotal': item.pts,
-        'co2Total': item.co2,
-      },
-      $push: {
-        'history': item
-      },
-      $set: {
-        'verified': verified
-      }
-    })
-    this.setState({
-      verified
-    })
+  async getUnviewed() {
+    await axios.get(config.api + 'activities/unviewed')
+      .then((res) => this.setState({
+        unviewed: res.data
+      }))
+      .catch((err) => console.log(err.response))
   }
 
-  pushToAWS(submitData) {
-    const { photo, text, ts, meta } = submitData
+  async view() {
+    await axios.post(config.api + `activities/view/${this.state.unviewed[0]._id}`)
+      .then((res) => this.setState({
+        unviewed: this.state.unviewed.slice(1)
+      }))
+  }
 
-    if (ts - this.state.lastUploadedTime < 20) {
-      console.log(`Cannot Upload So Soon!`)
-      return
-    }
+  async getFunFact() {
+    await axios.get(config.api + 'funfacts/random')
+      .then((res) => this.setState({
+        funFact: toUnicode(res.data)
+      }))
+      .catch((err) => console.log(err.response))
+  }
 
-    const dupls = this.props.userData.toBeVerified.filter(({ type, ts }) => type === photo ? 'photo' : 'text' && ts === submitData.ts)
-    if (dupls.length > 0) {
-      return
-    }
+  async getEcocategory(category) {
+    return axios.get(config.api + `ecocategories/${category}`)
+      .then((res) => res.data)
+      .catch((res) => console.log(res.response))
+  }
 
-    const combined = [...this.props.userData.history, ...this.props.userData.toBeVerified]
-    if (meta.limit) {
-      meta.ts = ts
-      let occurances = []
-      let rateText = ""
-      if (meta.limit.rate === 'total') {
-        occurances = combined.filter(({ id }) => id === meta.id)
-        rateText = "in total"
-      } else if (meta.limit.rate === 'week') {
-        occurances = combined.filter(({ id, ts }) => id === meta.id && meta.ts - ts < 604800)
-        rateText = "per week"
-      } else if (meta.limit.rate === 'day') {
-        occurances = combined.filter(({ id, ts }) => id === meta.id && meta.ts - ts < 86400)
-        rateText = "per day"
-      }
-      if (occurances.length + 1 > meta.limit.times) {
-        this.props.navigation.navigate('Home', {
-          submitData: `You can't do that more than ${meta.limit.times} times ${rateText}!`
-        })
-        return
-      }
-    }
+  async getName() {
+    await axios.get(config.api + `users/current`)
+      .then((res) => this.setState({
+        name: res.data.username
+      }))
+      .catch(() => this.setState({
+        netErr: true
+      }))
+  }
 
-    const aws = this.props.client.client.getServiceClient(AwsServiceClient.factory, 'ImageSubmissionService')
-    const bucket = config.aws.bucket
-
-    if (photo) {
-      console.log("Saving Photo....")
-      const key = `${this.props.client.currentUserId}-${ts}-${meta.id}-photo`
-      const url = `http://${bucket}.s3.amazonaws.com/${encodeURIComponent(key).replace(/\//g, '-')}`
-      const contentType = 'img/jpg'
-
-      const args = {
-        ACL: 'public-read',
-        Bucket: bucket,
-        ContentType: contentType,
-        Key: key,
-        Body: photo.base64
-      }
-
-      const request = new AwsRequest.Builder()
-        .withService('s3')
-        .withAction('PutObject')
-        .withRegion('us-east-1')
-        .withArgs(args)
-        .build()
-
-      aws.execute(request)
-        .then(result => {
-          meta.aws = {
-            ETag: result.ETag,
-            VersionId: result.VersionId,
-            Url: url
-          }
-          meta.ts = ts
-          meta.type = 'photo'
-          this.props.update({
-            $push: {
-              'toBeVerified': meta,
-              // 'allHistory': {
-              //   name: meta.name,
-              //   id: meta.id,
-              //   pts: meta.pts,
-              //   co2: meta.co2,
-              //   limit: meta.limit,
-              //   ts: meta.ts
-              // }
-            }
-          })
-          this.props.navigation.navigate('Home', {
-            submitData: text ? {
-              text,
-              ts,
-              meta
-            } : 'completed'
-          })
-        })
-        .catch((err) => {
-          console.log(`Error Uploading to AWS S3 (${err})`)
-        })
-    } else if (text) {
-      console.log("Saving Text....")
-      const key = `${this.props.client.currentUserId}-${ts}-${meta.id}-text`
-      const url = `http://${bucket}.s3.amazonaws.com/${encodeURIComponent(key).replace(/\//g, '-')}`
-      const contentType = 'text/plain'
-
-      const args = {
-        ACL: 'public-read',
-        Bucket: bucket,
-        ContentType: contentType,
-        Key: key,
-        Body: text
-      }
-
-      const request = new AwsRequest.Builder()
-        .withService('s3')
-        .withAction('PutObject')
-        .withRegion('us-east-1')
-        .withArgs(args)
-        .build()
-
-      aws.execute(request)
-        .then(result => {
-          meta.aws = {
-            ETag: result.ETag,
-            VersionId: result.VersionId,
-            Url: url
-          }
-          meta.ts = ts
-          meta.type = 'text'
-          this.props.update({
-            $push: {
-              'toBeVerified': meta,
-              // 'allHistory': {
-              //   name: meta.name,
-              //   id: meta.id,
-              //   pts: meta.pts,
-              //   co2: meta.co2,
-              //   limit: meta.limit,
-              //   ts: meta.ts
-              // }
-            }
-          })
-          this.props.navigation.navigate('Home', {
-            submitData: photo ? {
-              photo,
-              ts,
-              meta
-            } : 'completed'
-          })
-          // this.setState({
-          //   submitData: [ ...submitData, meta ]
-          // })
-          // this.props.update({
-          //   $push: {
-          //     'toBeVerified': meta
-          //   }
-          // })
-          // this.props.navigation.navigate('Home', { submitData: null })
-        })
-        .catch((err) => {
-          console.log(`Error Uploading to AWS S3 (${err})`)
-        })
-    }
+  async postActivity(submitData) {
+    console.log('posting')
+    await axios.post(config.api + 'activities/add', submitData)
+    this.getEcoicons();
+    return
   }
 
   render() {
     const {
-      userData: {
-        ptsToday,
-        ptsTotal,
-        co2Total,
-        name
-      },
       navigation: {
-        navigate
-      },
-      client,
-      submitData
+        navigate,
+        getParam,
+        setParams
+      }
     } = this.props
-
-    if (submitData && typeof submitData !== 'string') {
-      this.pushToAWS.bind(this)(submitData)
-    }
-
-    const { verified } = this.state
-
-    const ptsTodayExpected = 10
-    const funFact = config.funFacts[ Math.floor(Math.random() * config.funFacts.length) ]
-
-    let dailyGoal = ptsToday / ptsTodayExpected
-    if (dailyGoal > 1) {
-      dailyGoal = 1
-    }
-
-    // var dailyGoalString = String(dailyGoal * 100) + '%'
 
     if (!this.state.fontLoaded) return null
 
+    const submitData = getParam('submitData')
+    if(submitData) {
+      setParams({
+        submitData: null
+      })
+      this.getEcoicons();
+    }
+
+    if (this.state.netErr) {
+      this.props.loginKeychain()
+    }
+
     return (
       <View style={styles.container}>
-        {verified.length > 0 && <View style={styles.overlayContainer}>
+        {this.state.unviewed.length > 0 && <View style={styles.overlayContainer}>
           <SmartCard style={styles.overlay}>
             <Text style={styles.pointsAwardedText}>You
-                                                   got {verified[ 0 ].pts} points
+                                                   got {this.state.unviewed[ 0 ].metaPts} point{this.state.unviewed[ 0 ].metaPts > 1 ? 's ' : ' '}
                                                    for:</Text>
             <Text />
-            <Text style={styles.pointsAwardedNumber}>{verified[ 0 ].name}</Text>
+            <Text style={styles.pointsAwardedNumber}>{this.state.unviewed[ 0 ].metaName}</Text>
             <Text />
             <Button
               title={'Continue'}
-              onPress={this.addRecentItem.bind(this)}
+              onPress={this.view} // view
             />
           </SmartCard>
         </View>}
-        {submitData && submitData !== 'completed' &&
+        {submitData &&
         <View style={styles.overlayContainer}>
           <SmartCard style={styles.overlay}>
             <Text style={styles.pointsAwardedText}>{typeof submitData === 'string' ? submitData : 'Uploading Submission...'}</Text>
             <Text />
-            {typeof submitData === 'string' ? <Button
-              title={'Continue'}
-              onPress={() => navigate('Home', { submitData: null })}
-            /> : <RippleLoader />}
+            <RippleLoader />
             <Text />
           </SmartCard>
         </View>}
-        <View style={{ opacity: verified.length > 0 || (submitData && submitData !== 'completed') ? 0.1 : 1 }}>
+        {/*<View style={{ opacity: verified.length > 0 || (submitData && submitData !== 'completed') ? 0.1 : 1 }}>*/}
+        {this.state.netErr ? <View style={styles.overlayContainer}>
+          <SmartCard style={styles.overlay}>
+            <Text style={styles.funFactLabel}>Sorry, there was a network error :( Try again later!</Text>
+          </SmartCard>
+          </View> : <View style={{ opacity: submitData || this.state.unviewed.length > 0 ? 0.1 : 1 }}>
           <StatusBar barStyle="default" />
           <Text />
           <SmartCard>
             <View style={{ flexDirection: 'row' }}>
               <View style={styles.ptsBox}>
-                <Text style={styles.ptsText}>{truncateNum(ptsTotal, 'integer')}</Text>
+                <Text style={styles.ptsText}>{this.state.totalPts && truncateNum(this.state.totalPts, 'integer')}</Text>
                 <Text style={styles.ptsLabel}>Total Points</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.ptsBox}>
-                <Text style={styles.ptsText}>{truncateNum(co2Total, 'double')}</Text>
+                <Text style={styles.ptsText}>{this.state.totalCO2 && truncateNum(this.state.totalCO2, 'double')}</Text>
                 <Text style={styles.ptsLabel}>Total CO{'\u2082'} Saved</Text>
               </View>
-              {/*<View style={styles.divider} />
-              <View style={styles.ptsBox}>
-                <Text style={styles.ptsText}>{truncateNum(ptsToday, 'integer')}</Text>
-                <Text style={styles.ptsLabel}>Points Today</Text>
-              </View>*/}
             </View>
-            {/*<Text style={styles.greetingText}>{getInspirationalText(dailyGoal, ptsToday, ptsTodayExpected, name)}</Text>*/}
             <Text style={styles.greetingText}>Welcome to the Smart Andover
-                                              App, {name}!</Text>
-            {/*<Text style={styles.funFactLabel}>*/}
-            {/*  {'Fun Fact: '}*/}
-            {/*  <Text*/}
-            {/*    style={styles.funFact}*/}
-            {/*  >{funFact}</Text>*/}
-            {/*</Text>*/}
+                                              App, {this.state.name}!</Text>
           </SmartCard>
-          {/*<SmartCard>
-          <Text
-            style={{
-              fontWeight: 'bold',
-              fontSize: 16
-            }}
-          >{'Today\'s Daily Goal'}</Text>
-          <DailyBar
-            ptsToday={ptsToday}
-            dailyGoal={dailyGoal}
-          />
-          <Text
-            style={{
-              marginTop: 15,
-              textAlign: 'center'
-            }}
-          >{getInspirationalText(dailyGoal, ptsToday, ptsTodayExpected)}</Text>
-        </SmartCard>*/}
-          <SmartCard>
+          {this.state.funFact ? <SmartCard>
             <View>
-              <Text style={styles.funFactLabel}>
-                {'Fun Fact: '}
-                <Text
-                  style={styles.funFact}
-                >{funFact}</Text>
-              </Text>
+              <Text style={styles.cardTitles}>Fun Fact</Text>
+              <Text style={styles.funFact}>{this.state.funFact}</Text>
             </View>
-          </SmartCard>
-          <View style={{ flexDirection: 'row', marginTop: 15 }}>
-            <TouchableOpacity
-              onPress={() => navigate('Submission', {
-                type: 'eat',
-                c: config.top,
-                client: client
-              })}
-            >
-              <EcoIcon
-                c={config.top}
-                name={'Eat'}
-                img={require('../../assets/eco-icons/eat.png')}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigate('Submission', {
-                type: 'drink',
-                c: config.top,
-                client: client
-              })}
-            >
-              <EcoIcon
-                c={config.top}
-                name={'Drink'}
-                img={require('../../assets/eco-icons/drink.png')}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigate('Submission', {
-                type: 'clean',
-                c: config.top,
-                client: client
-              })}
-            >
-              <EcoIcon
-                c={config.top}
-                name={'Clean'}
-                img={require('../../assets/eco-icons/clean.png')}
-              />
-            </TouchableOpacity>
-          </View>
-          <View style={{ flexDirection: 'row' }}>
-            <TouchableOpacity
-              onPress={() => navigate('Submission', {
-                type: 'reduce',
-                c: config.mid,
-                client: client
-              })}
-            >
-              <EcoIcon
-                c={config.mid}
-                name={'Reduce'}
-                img={require('../../assets/eco-icons/reduce.png')}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigate('Submission', {
-                type: 'reuse',
-                c: config.mid,
-                client: client
-              })}
-            >
-              <EcoIcon
-                c={config.mid}
-                name={'Reuse'}
-                img={require('../../assets/eco-icons/reuse.png')}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigate('Submission', {
-                type: 'recycle',
-                c: config.mid,
-                client: client
-              })}
-            >
-              <EcoIcon
-                c={config.mid}
-                name={'Recycle'}
-                img={require('../../assets/eco-icons/recycle.png')}
-              />
-            </TouchableOpacity>
-          </View>
-          <View style={{ flexDirection: 'row' }}>
-            <TouchableOpacity
-              onPress={() => navigate('Submission', {
-                type: 'innovate',
-                c: config.bot,
-                client: client
-              })}
-            >
-              <EcoIcon
-                c={config.bot}
-                name={'Innovate'}
-                img={require('../../assets/eco-icons/innovate.png')}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigate('Submission', {
-                type: 'energy',
-                c: config.bot,
-                client: client
-              })}
-            >
-              <EcoIcon
-                c={config.bot}
-                name={'Energy'}
-                img={require('../../assets/eco-icons/share.png')}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigate('Submission', {
-                type: 'engage',
-                c: config.bot,
-                client: client
-              })}
-            >
-              <EcoIcon
-                c={config.bot}
-                name={'Engage'}
-                img={require('../../assets/eco-icons/support.png')}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
+          </SmartCard> : null}
+          {Object.keys(this.state.ecoIcons).length === 9 && categories.map((row) =>
+            <View style={{ flexDirection: 'row'}}>
+              {row.map((iName) =>
+                <TouchableOpacity
+                  onPress={() => navigate('Submission', {
+                    meta: this.state.ecoIcons[iName],
+                    typeId: iName
+                  })}
+                >
+                  <EcoIcon
+                    name={iName.charAt(0).toUpperCase() + iName.substring(1)}
+                    img={images[iName]}
+                    c={this.state.ecoIcons[iName].color}
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>}
       </View>
     )
   }
@@ -563,7 +326,13 @@ const styles = StyleSheet.create({
   pointsAwardedNumber: {
     fontFamily: 'roboto-medium',
     fontSize: 17
+  },
+  cardTitles: {
+    fontFamily: 'roboto-medium',
+    textAlign: 'center',
+    fontSize: 17,
+    marginBottom: 5
   }
 })
 
-export default LoggedInScreen
+export default LoggedInScreen;

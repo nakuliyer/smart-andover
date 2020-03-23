@@ -34,8 +34,7 @@ class SmartCard extends Component {
         style={[ styles.card, {
           backgroundColor: backgroundColor,
           width: width,
-          height: height,
-          borderRadius: borderRadius
+          height: height
         } ]}
       >
         {this.props.children}
@@ -61,15 +60,21 @@ const styles = StyleSheet.create({
   card: {
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: {
-      width: 1,
-      height: 3
-    },
-    shadowColor: 'black',
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
+    // shadowOffset: {
+    //   width: 1,
+    //   height: 3
+    // },
+    borderColor: 'rgba(0,0,0,0.2)',
+    borderRadius: 20,
+    borderWidth: 1,
+    // shadowColor: 'black',
+    // shadowOpacity: 0.2,
+    // shadowRadius: 1,
     margin: 5,
-    padding: 10
+    paddingLeft: 15,
+    paddingRight: 15,
+    paddingTop: 10,
+    paddingBottom: 10
   }
 })
 
