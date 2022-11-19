@@ -55,7 +55,7 @@
   "devDependencies": {
     "babel-preset-expo": "^5.0.0",
     "webpack": "^4.39.1",
-    "webpack-cli": "^3.3.6"
+    "webpack-cli": "^3.3.12"
   },
   "private": true
 }
