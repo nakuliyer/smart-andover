@@ -21,7 +21,7 @@
     "expo-image-manipulator": "^8.0.0",
     "expo-jwt": "^1.1.2",
     "expo-secure-store": "~5.0.1",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "js-base64": "^2.5.1",
     "jsonwebtoken": "^8.5.1",
     "kerberos": "^1.1.2",
